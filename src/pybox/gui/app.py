@@ -25,8 +25,10 @@ def run():
     app.setApplicationVersion("0.1.0")
 
     # Install translations before creating any widgets
+    from pybox.gui import settings
     from pybox.gui.i18n import install as install_l10n
-    install_l10n(args.lang)
+    lang = args.lang or settings.language() or None
+    install_l10n(lang)
 
     # Default font
     font = QFont("Segoe UI", 10)

@@ -22,6 +22,7 @@ from pybox.gui.gyro_preview import GyroPreviewWidget
 from pybox.gui.step_plots import StepResponsePlots
 from pybox.gui import i18n
 from pybox.gui import theme as theme_mod
+from pybox.gui import settings
 from pybox.gui.theme import Theme
 
 
@@ -33,6 +34,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("PyBox – Blackbox Log Analyzer")
         self.resize(1400, 900)
 
+        # Restore saved theme
+        saved_theme = settings.theme()
+        theme_mod.set_theme(saved_theme)
         self._current_theme = theme_mod.current()
         self._apply_theme(self._current_theme)
         self._build_menu_bar()
@@ -60,7 +64,7 @@ class MainWindow(QMainWindow):
         gyro_layout.setSpacing(2)
 
         gyro_header = QHBoxLayout()
-        self._gyro_title = QLabel(self.tr("Gyro Preview – drag the shaded region to set analysis range"))
+        self._gyro_title = QLabel(self.tr("Gyro Preview – drag the edges to set analysis range"))
         self._gyro_title.setStyleSheet(f"color: {self._current_theme.fg_dim}; font-size: 11px;")
         gyro_header.addWidget(self._gyro_title)
 
@@ -97,6 +101,17 @@ class MainWindow(QMainWindow):
         self.log_panel.log_visibility_changed.connect(self._on_visibility_changed)
         self.log_panel.log_removed.connect(self._on_log_removed)
         self.log_panel.logs_cleared.connect(self._on_logs_cleared)
+        self.gyro_preview.time_range_changed.connect(self._on_range_changed)
+
+        self._step_computed = False  # True once user has computed step response
+
+        # Restore window geometry
+        geom = settings.window_geometry()
+        if geom:
+            self.restoreGeometry(geom)
+        state = settings.window_state()
+        if state:
+            self.restoreState(state)
 
     # ── Signal handlers ───────────────────────────────────────────────
 
@@ -146,6 +161,7 @@ class MainWindow(QMainWindow):
         self.gyro_preview.clear_preview()
         self.step_plots.clear_plots()
         self.btn_compute.setEnabled(False)
+        self._step_computed = False
         self.status_bar.showMessage(self.tr("All logs cleared"))
 
     def _on_compute(self):
@@ -161,6 +177,7 @@ class MainWindow(QMainWindow):
 
         try:
             self.step_plots.update_plots(entries)
+            self._step_computed = True
             self.status_bar.showMessage(
                 self.tr("Step response computed for {count} log(s)").format(count=len(visible))
             )
@@ -168,6 +185,16 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage(f"Error: {e}")
         finally:
             self.btn_compute.setEnabled(True)
+
+    def _on_range_changed(self, start_s: float, end_s: float):
+        """Auto-recompute step response when analysis range changes."""
+        if not self._step_computed:
+            return
+        entries = self.log_panel.entries
+        visible = [e for e in entries if e.visible]
+        if not visible:
+            return
+        self.step_plots.update_plots(entries)
 
     # ── Menu bar ──────────────────────────────────────────────────────
 
@@ -239,13 +266,14 @@ class MainWindow(QMainWindow):
         if locale_code == i18n.current_locale():
             return
         i18n.install(locale_code)
+        settings.set_language(locale_code)
         self._retranslate_ui()
 
     def _retranslate_ui(self):
         """Refresh all translatable strings in the current window."""
         self.setWindowTitle("PyBox \u2013 Blackbox Log Analyzer")
         self._gyro_title.setText(
-            self.tr("Gyro Preview \u2013 drag the shaded region to set analysis range")
+            self.tr("Gyro Preview \u2013 drag the edges to set analysis range")
         )
         self.btn_compute.setText(self.tr("Compute Step Response"))
         self.status_bar.showMessage(
@@ -278,6 +306,7 @@ class MainWindow(QMainWindow):
     def _on_theme_changed(self, name: str):
         t = theme_mod.set_theme(name)
         self._current_theme = t
+        settings.set_theme(name)
         self._apply_theme(t)
         # Propagate to children
         self._apply_compute_btn_style(t)
@@ -320,6 +349,12 @@ class MainWindow(QMainWindow):
             }}
             QMenu::item:selected {{ background: {t.accent_bg}; }}
         """)
+
+    def closeEvent(self, event):
+        """Save window geometry on close."""
+        settings.set_window_geometry(self.saveGeometry())
+        settings.set_window_state(self.saveState())
+        super().closeEvent(event)
 
     def _apply_theme(self, t: Theme):
         self.setStyleSheet(f"""
