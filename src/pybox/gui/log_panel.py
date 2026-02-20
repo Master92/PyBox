@@ -243,10 +243,22 @@ class LogPanel(QWidget):
 
         from pybox.decoder.flightlog import FlightLog
 
-        # Count total logs across all files
+        # Show progress dialog immediately (phase 1: discovering, phase 2: decoding)
+        progress = QProgressDialog(self.tr("Discovering logs..."), self.tr("Cancel"), 0, 0, self)
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+        progress.show()
+        QApplication.processEvents()
+
+        # Phase 1: discover log counts in each file
+        file_log_counts: list[tuple[str, int]] = []
         total_logs = 0
-        file_log_counts = []
-        for f in files:
+        for i, f in enumerate(files):
+            if progress.wasCanceled():
+                break
+            progress.setLabelText(self.tr("Scanning file {idx}/{total}...").format(idx=i + 1, total=len(files)))
+            QApplication.processEvents()
             try:
                 fl = FlightLog(f)
                 file_log_counts.append((f, fl.log_count))
@@ -255,20 +267,22 @@ class LogPanel(QWidget):
                 QMessageBox.warning(self, self.tr("Error"), self.tr("Failed to open {path}:\n{error}").format(path=f, error=e))
                 file_log_counts.append((f, 0))
 
-        if total_logs == 0:
+        if total_logs == 0 or progress.wasCanceled():
+            progress.close()
             return
 
-        progress = QProgressDialog(self.tr("Decoding logs..."), self.tr("Cancel"), 0, total_logs, self)
-        progress.setWindowModality(Qt.WindowModality.WindowModal)
-        progress.setMinimumDuration(300)
-
+        # Phase 2: decode each log with real progress
+        progress.setMaximum(total_logs)
+        progress.setValue(0)
         loaded = 0
         for file_path, count in file_log_counts:
             for log_idx in range(count):
                 if progress.wasCanceled():
                     break
                 progress.setValue(loaded)
-                progress.setLabelText(f"Decoding {file_path} log {log_idx + 1}/{count}")
+                progress.setLabelText(
+                    self.tr("Decoding logs...") + f"\n{file_path}\nLog {log_idx + 1}/{count}"
+                )
                 QApplication.processEvents()
 
                 try:

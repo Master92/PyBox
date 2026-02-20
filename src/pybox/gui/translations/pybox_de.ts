@@ -39,6 +39,14 @@
 {error}</translation>
     </message>
     <message>
+        <source>Discovering logs...</source>
+        <translation>Logs werden erkannt…</translation>
+    </message>
+    <message>
+        <source>Scanning file {idx}/{total}...</source>
+        <translation>Datei {idx}/{total} wird gescannt…</translation>
+    </message>
+    <message>
         <source>Decoding logs...</source>
         <translation>Logs werden dekodiert…</translation>
     </message>

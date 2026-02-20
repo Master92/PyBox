@@ -54,6 +54,7 @@ class StepResponsePlots(QWidget):
         self._plots: list[pg.PlotItem] = []
         self._ref_lines: list[pg.InfiniteLine] = []
         self._curves: dict[tuple[int, int], pg.PlotDataItem] = {}  # (log_idx, axis) → curve
+        self._bands: dict[tuple[int, int], pg.FillBetweenItem] = {}  # confidence bands
 
         for i, name in enumerate(AXIS_NAMES):
             if i > 0:
@@ -135,12 +136,23 @@ class StepResponsePlots(QWidget):
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 1)
 
+    @staticmethod
+    def _smooth(data: np.ndarray, window: int = 15) -> np.ndarray:
+        """Simple moving-average smoothing."""
+        if window < 2 or len(data) < window:
+            return data
+        kernel = np.ones(window) / window
+        return np.convolve(data, kernel, mode="same")
+
     def update_plots(self, entries: list[LogEntry]):
         """Recompute and redraw step responses for all visible entries."""
-        # Remove old curves
+        # Remove old curves and bands
         for (log_idx, axis), curve in self._curves.items():
             self._plots[axis].removeItem(curve)
         self._curves.clear()
+        for (log_idx, axis), band in self._bands.items():
+            self._plots[axis].removeItem(band)
+        self._bands.clear()
 
         # Clear legends
         for plot in self._plots:
@@ -194,9 +206,24 @@ class StepResponsePlots(QWidget):
             if len(result.mean_response) == 0:
                 continue
 
+            # Smooth the mean for a cleaner comparison curve
+            mean = self._smooth(result.mean_response, window=15)
+            std = self._smooth(result.std_response, window=15)
+
+            # ±1σ confidence band (semi-transparent fill)
+            upper = mean + std
+            lower = mean - std
+            band = pg.FillBetweenItem(
+                pg.PlotDataItem(result.time_ms, upper),
+                pg.PlotDataItem(result.time_ms, lower),
+                brush=pg.mkBrush(QColor(color).red(), QColor(color).green(), QColor(color).blue(), 30),
+            )
+            self._plots[axis].addItem(band)
+            self._bands[(log_idx, axis)] = band
+
             curve = self._plots[axis].plot(
                 result.time_ms,
-                result.mean_response,
+                mean,
                 pen=pen,
                 name=entry.label,
             )
@@ -233,10 +260,13 @@ class StepResponsePlots(QWidget):
             self._table.setItem(row, 6, QTableWidgetItem(f"{range_s:.1f}s"))
 
     def clear_plots(self):
-        """Remove all curves and clear the table."""
+        """Remove all curves, bands, and clear the table."""
         for (log_idx, axis), curve in self._curves.items():
             self._plots[axis].removeItem(curve)
         self._curves.clear()
+        for (log_idx, axis), band in self._bands.items():
+            self._plots[axis].removeItem(band)
+        self._bands.clear()
         for plot in self._plots:
             if plot.legend is not None:
                 plot.legend.clear()
