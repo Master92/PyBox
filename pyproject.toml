@@ -24,9 +24,14 @@ dev = [
 cli = [
     "click>=8.0",
 ]
+gui = [
+    "PyQt6>=6.5",
+    "pyqtgraph>=0.13",
+]
 
 [project.scripts]
 pybox = "pybox.cli:main"
+pybox-gui = "pybox.gui.app:run"
 
 [tool.setuptools.packages.find]
 where = ["src"]
