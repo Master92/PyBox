@@ -1,5 +1,7 @@
 # PyBox – Betaflight Blackbox Log Analyzer
 
+[![CI – Test & Build](https://github.com/Master92/PyBox/actions/workflows/ci.yml/badge.svg)](https://github.com/Master92/PyBox/actions/workflows/ci.yml)
+
 A pure-Python tool for decoding and analyzing Betaflight Blackbox flight logs,
 inspired by [PIDtoolbox](https://github.com/bw1129/PIDtoolbox).
 
