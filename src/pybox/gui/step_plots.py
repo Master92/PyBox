@@ -62,9 +62,9 @@ class StepResponsePlots(QWidget):
             plot.showGrid(x=True, y=True, alpha=0.15)
             plot.getAxis("bottom").setPen("#888")
             plot.getAxis("left").setPen("#888")
-            plot.setYRange(0, 1.5)
             plot.setXRange(0, 500, padding=0)
             plot.setLimits(xMin=0, xMax=500)
+            plot.enableAutoRange(axis="y")
             plot.setMouseEnabled(x=False, y=False)
             plot.hideButtons()
 
@@ -149,9 +149,9 @@ class StepResponsePlots(QWidget):
                 continue
             self._compute_and_plot(entry, log_idx)
 
-        # Keep fixed Y range for consistent comparison
+        # Auto-scale Y so no data gets clipped
         for plot in self._plots:
-            plot.setYRange(0, 1.5)
+            plot.enableAutoRange(axis="y")
 
         # Update table
         self._update_table(entries)
