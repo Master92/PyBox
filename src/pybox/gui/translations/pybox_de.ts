@@ -89,8 +89,8 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <source>Gyro Preview – drag the shaded region to set analysis range</source>
-        <translation>Gyro-Vorschau – den schattierten Bereich ziehen, um den Analysebereich festzulegen</translation>
+        <source>Gyro Preview – drag the edges to set analysis range</source>
+        <translation>Gyro-Vorschau – Ränder ziehen, um den Analysebereich festzulegen</translation>
     </message>
     <message>
         <source>Compute Step Response</source>

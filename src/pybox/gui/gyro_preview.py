@@ -77,14 +77,20 @@ class GyroPreviewWidget(QWidget):
         legend_row.addStretch()
         layout.addLayout(legend_row)
 
-        # Draggable region
+        # Draggable region – only the start/end handles can be moved
+        # (movable=False prevents dragging the whole region)
         self._region = pg.LinearRegionItem(
             values=[0, 1],
             brush=pg.mkBrush(100, 100, 200, 40),
             pen=pg.mkPen("#aaaaff", width=2),
             hoverBrush=pg.mkBrush(100, 100, 200, 60),
             hoverPen=pg.mkPen("#ccccff", width=2),
+            movable=False,
         )
+        # Make edge handles individually movable with a larger grab area
+        for line in self._region.lines:
+            line.setMovable(True)
+            line.addMarker("^", position=0.5, size=12)
         self._region.sigRegionChangeFinished.connect(self._on_region_changed)
         self._plot.addItem(self._region)
 
