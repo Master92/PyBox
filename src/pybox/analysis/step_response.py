@@ -139,11 +139,13 @@ def _deconvolve_segment(
     ir = impulse_response[:response_len]
     step_response = np.cumsum(ir)
 
-    # Normalize so steady-state ≈ 1
+    # Normalize so steady-state ≈ +1 (absolute value – the sign depends on
+    # whether setpoint happened to be positive or negative in this segment,
+    # which is arbitrary).
     if len(step_response) > 0:
         tail = step_response[-response_len // 4:]
         steady_state = np.mean(tail) if len(tail) > 0 else 1.0
         if abs(steady_state) > 1e-6:
-            step_response = step_response / steady_state
+            step_response = step_response / abs(steady_state)
 
     return step_response
