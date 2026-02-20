@@ -8,6 +8,7 @@ import numpy as np
 import pyqtgraph as pg
 
 from pybox.gui.models import LogEntry
+from pybox.gui.theme import Theme, current as current_theme
 
 
 class GyroPreviewWidget(QWidget):
@@ -59,6 +60,7 @@ class GyroPreviewWidget(QWidget):
         legend_row = QHBoxLayout()
         legend_row.setContentsMargins(8, 0, 8, 2)
         legend_row.addStretch()
+        self._legend_labels: list[QLabel] = []
         for i in range(3):
             swatch = QLabel()
             swatch.setFixedSize(14, 3)
@@ -68,6 +70,7 @@ class GyroPreviewWidget(QWidget):
             legend_row.addWidget(swatch)
             lbl = QLabel(self.AXIS_NAMES[i])
             lbl.setStyleSheet("color: #ccc; font-size: 11px; border: none;")
+            self._legend_labels.append(lbl)
             legend_row.addWidget(lbl)
             if i < 2:
                 legend_row.addSpacing(12)
@@ -148,3 +151,13 @@ class GyroPreviewWidget(QWidget):
     def clear_preview(self):
         """Reset to empty state."""
         self.show_entry(None)
+
+    def apply_theme(self, t: Theme):
+        """Update colors to match the given theme."""
+        self._gfx.setBackground(t.plot_bg)
+        self._plot.getAxis("bottom").setPen(t.plot_axis)
+        self._plot.getAxis("left").setPen(t.plot_axis)
+        self._plot.showGrid(x=True, y=True, alpha=t.plot_grid_alpha)
+        self._placeholder.setColor(t.fg_dim)
+        for lbl in self._legend_labels:
+            lbl.setStyleSheet(f"color: {t.fg_dim}; font-size: 11px; border: none;")

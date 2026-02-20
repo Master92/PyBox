@@ -47,21 +47,21 @@ def _utf16(s: str) -> bytes:
     return s.encode("utf-16-be")
 
 
-def _qm_hash(source: str, context: str) -> int:
-    """Compute the hash Qt uses to look up messages (djb2-style)."""
-    text = source
+def _qm_hash(source: str, comment: str = "") -> int:
+    """Compute the ELF hash Qt uses to look up messages.
+
+    Qt hashes the UTF-8 bytes of ``source + comment`` (context is NOT
+    part of the hash — it is matched separately after the hash lookup).
+    """
+    data = source.encode("utf-8") + comment.encode("utf-8")
     h = 0
-    for ch in text:
-        h = ((h << 5) + h + ord(ch)) & 0xFFFFFFFF
-
-    # Mix in context
-    if context:
-        hc = 0
-        for ch in context:
-            hc = ((hc << 5) + hc + ord(ch)) & 0xFFFFFFFF
-        h ^= hc
-
-    return h & 0xFFFFFFFF
+    for byte in data:
+        h = ((h << 4) + byte) & 0xFFFFFFFF
+        g = h & 0xF0000000
+        if g:
+            h ^= g >> 24
+        h &= ~g & 0xFFFFFFFF
+    return h if h != 0 else 1
 
 
 def _pack_message(context: str, source: str, translation: str) -> bytes:
@@ -70,7 +70,7 @@ def _pack_message(context: str, source: str, translation: str) -> bytes:
 
     # Translation (UTF-16BE)
     trans_bytes = _utf16(translation)
-    buf += struct.pack(">BH", TAG_TRANSLATION, len(trans_bytes))
+    buf += struct.pack(">BI", TAG_TRANSLATION, len(trans_bytes))
     buf += trans_bytes
 
     # Context (UTF-8)
@@ -117,7 +117,7 @@ def compile_ts(ts_path: Path) -> bytes:
             source = src_elem.text
             translation = trans_elem.text
 
-            h = _qm_hash(source, context_name)
+            h = _qm_hash(source)
             packed = _pack_message(context_name, source, translation)
             messages.append((h, packed))
 
@@ -130,7 +130,6 @@ def compile_ts(ts_path: Path) -> bytes:
     for h, packed in messages:
         offset = len(msg_block)
         hash_table += struct.pack(">II", h, offset)
-        msg_block += struct.pack(">I", len(packed))
         msg_block += packed
 
     # Assemble final .qm file

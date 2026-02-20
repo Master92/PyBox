@@ -21,6 +21,8 @@ from pybox.gui.log_panel import LogPanel
 from pybox.gui.gyro_preview import GyroPreviewWidget
 from pybox.gui.step_plots import StepResponsePlots
 from pybox.gui import i18n
+from pybox.gui import theme as theme_mod
+from pybox.gui.theme import Theme
 
 
 class MainWindow(QMainWindow):
@@ -31,8 +33,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("PyBox – Blackbox Log Analyzer")
         self.resize(1400, 900)
 
-        self._apply_dark_theme()
+        self._current_theme = theme_mod.current()
+        self._apply_theme(self._current_theme)
         self._build_menu_bar()
+        self._apply_menu_style(self._current_theme)
 
         # ── Central widget ────────────────────────────────────────────
         central = QWidget()
@@ -57,24 +61,11 @@ class MainWindow(QMainWindow):
 
         gyro_header = QHBoxLayout()
         self._gyro_title = QLabel(self.tr("Gyro Preview – drag the shaded region to set analysis range"))
-        self._gyro_title.setStyleSheet("color: #aaa; font-size: 11px;")
+        self._gyro_title.setStyleSheet(f"color: {self._current_theme.fg_dim}; font-size: 11px;")
         gyro_header.addWidget(self._gyro_title)
 
         self.btn_compute = QPushButton(self.tr("Compute Step Response"))
-        self.btn_compute.setStyleSheet("""
-            QPushButton {
-                background: #4a8a4a;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 6px 16px;
-                font-size: 12px;
-                font-weight: bold;
-            }
-            QPushButton:hover { background: #5a9a5a; }
-            QPushButton:pressed { background: #3a7a3a; }
-            QPushButton:disabled { background: #444; color: #888; }
-        """)
+        self._apply_compute_btn_style(self._current_theme)
         self.btn_compute.setEnabled(False)
         self.btn_compute.clicked.connect(self._on_compute)
         gyro_header.addWidget(self.btn_compute)
@@ -96,7 +87,7 @@ class MainWindow(QMainWindow):
 
         # ── Status bar ────────────────────────────────────────────────
         self.status_bar = QStatusBar()
-        self.status_bar.setStyleSheet("color: #aaa; font-size: 11px;")
+        self.status_bar.setStyleSheet(f"color: {self._current_theme.fg_dim}; font-size: 11px;")
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage(self.tr("Ready – load Blackbox log files to begin"))
 
@@ -223,6 +214,20 @@ class MainWindow(QMainWindow):
             self._lang_menu.addAction(action)
             self._lang_actions[code] = action
 
+        # ── View menu (theme) ──────────────────────────────────────
+        self._view_menu = menu_bar.addMenu(self.tr("View"))
+        theme_group = QActionGroup(self)
+        theme_group.setExclusive(True)
+        self._theme_actions: dict[str, QAction] = {}
+        for name in ("dark", "light"):
+            label = self.tr("Dark") if name == "dark" else self.tr("Light")
+            action = QAction(label, self, checkable=True)
+            action.setChecked(name == self._current_theme.name)
+            action.triggered.connect(lambda checked, n=name: self._on_theme_changed(n))
+            theme_group.addAction(action)
+            self._view_menu.addAction(action)
+            self._theme_actions[name] = action
+
         # ── Help menu ──────────────────────────────────────────────
         self._help_menu = menu_bar.addMenu(self.tr("Help"))
         self._about_action = QAction(self.tr("About PyBox"), self)
@@ -249,6 +254,9 @@ class MainWindow(QMainWindow):
         self.log_panel.retranslate_ui()
         # Menus
         self._lang_menu.setTitle(self.tr("Language"))
+        self._view_menu.setTitle(self.tr("View"))
+        self._theme_actions["dark"].setText(self.tr("Dark"))
+        self._theme_actions["light"].setText(self.tr("Light"))
         self._help_menu.setTitle(self.tr("Help"))
         self._about_action.setText(self.tr("About PyBox"))
 
@@ -267,38 +275,84 @@ class MainWindow(QMainWindow):
 
     # ── Theming ───────────────────────────────────────────────────────
 
-    def _apply_dark_theme(self):
-        self.setStyleSheet("""
-            QMainWindow, QWidget {
-                background: #252525;
-                color: #ddd;
+    def _on_theme_changed(self, name: str):
+        t = theme_mod.set_theme(name)
+        self._current_theme = t
+        self._apply_theme(t)
+        # Propagate to children
+        self._apply_compute_btn_style(t)
+        self._gyro_title.setStyleSheet(f"color: {t.fg_dim}; font-size: 11px;")
+        self.status_bar.setStyleSheet(f"color: {t.fg_dim}; font-size: 11px;")
+        self.gyro_preview.apply_theme(t)
+        self.step_plots.apply_theme(t)
+        self.log_panel.apply_theme(t)
+        self._apply_menu_style(t)
+
+    def _apply_compute_btn_style(self, t: Theme):
+        self.btn_compute.setStyleSheet(f"""
+            QPushButton {{
+                background: {t.btn_compute_bg};
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 16px;
+                font-size: 12px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{ background: {t.btn_compute_hover}; }}
+            QPushButton:pressed {{ background: {t.btn_compute_pressed}; }}
+            QPushButton:disabled {{ background: {t.btn_disabled_bg}; color: {t.btn_disabled_fg}; }}
+        """)
+
+    def _apply_menu_style(self, t: Theme):
+        self.menuBar().setStyleSheet(f"""
+            QMenuBar {{
+                background: {t.bg_input};
+                color: {t.fg_dim};
+                border-bottom: 1px solid {t.border};
+                font-size: 12px;
+            }}
+            QMenuBar::item:selected {{ background: {t.accent_bg}; }}
+            QMenu {{
+                background: {t.bg_alt};
+                color: {t.fg_dim};
+                border: 1px solid {t.border};
+            }}
+            QMenu::item:selected {{ background: {t.accent_bg}; }}
+        """)
+
+    def _apply_theme(self, t: Theme):
+        self.setStyleSheet(f"""
+            QMainWindow, QWidget {{
+                background: {t.bg};
+                color: {t.fg};
                 font-family: 'Segoe UI', 'Roboto', sans-serif;
-            }
-            QSplitter::handle {
-                background: #333;
+            }}
+            QSplitter::handle {{
+                background: {t.border};
                 height: 3px;
-            }
-            QSplitter::handle:hover {
-                background: #555;
-            }
-            QStatusBar {
-                background: #1e1e1e;
-                border-top: 1px solid #333;
-            }
-            QScrollBar:vertical {
-                background: #2a2a2a;
+            }}
+            QSplitter::handle:hover {{
+                background: {t.border_light};
+            }}
+            QStatusBar {{
+                background: {t.bg_input};
+                border-top: 1px solid {t.border};
+            }}
+            QScrollBar:vertical {{
+                background: {t.bg_alt};
                 width: 10px;
                 border: none;
-            }
-            QScrollBar::handle:vertical {
-                background: #555;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {t.border_light};
                 border-radius: 4px;
                 min-height: 20px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: #777;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: {t.fg_dim};
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 height: 0;
-            }
+            }}
         """)

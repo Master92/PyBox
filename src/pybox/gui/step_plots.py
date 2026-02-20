@@ -22,6 +22,7 @@ from PyQt6.QtGui import QColor, QFont
 
 from pybox.gui.models import LogEntry
 from pybox.analysis.step_response import estimate_step_response
+from pybox.gui.theme import Theme, current as current_theme
 
 
 AXIS_NAMES = ["Roll", "Pitch", "Yaw"]
@@ -51,6 +52,7 @@ class StepResponsePlots(QWidget):
 
         self._graphics = plots_widget
         self._plots: list[pg.PlotItem] = []
+        self._ref_lines: list[pg.InfiniteLine] = []
         self._curves: dict[tuple[int, int], pg.PlotDataItem] = {}  # (log_idx, axis) → curve
 
         for i, name in enumerate(AXIS_NAMES):
@@ -78,6 +80,7 @@ class StepResponsePlots(QWidget):
             plot.addItem(ref_line)
 
             self._plots.append(plot)
+            self._ref_lines.append(ref_line)
 
         # Link X axes
         for i in range(1, 3):
@@ -88,9 +91,9 @@ class StepResponsePlots(QWidget):
         table_layout = QVBoxLayout(table_container)
         table_layout.setContentsMargins(8, 4, 8, 4)
 
-        table_title = QLabel(self.tr("PIDFF Configuration"))
-        table_title.setStyleSheet("color: #ccc; font-size: 13px; font-weight: bold;")
-        table_layout.addWidget(table_title)
+        self._table_title = QLabel(self.tr("PIDFF Configuration"))
+        self._table_title.setStyleSheet("color: #ccc; font-size: 13px; font-weight: bold;")
+        table_layout.addWidget(self._table_title)
 
         self._table = QTableWidget()
         self._table.setStyleSheet("""
@@ -246,4 +249,38 @@ class StepResponsePlots(QWidget):
             if key in self._curves:
                 self._curves[key].setVisible(visible)
         self._update_table(entries)
+
+    def apply_theme(self, t: Theme):
+        """Update colors to match the given theme."""
+        self._graphics.setBackground(t.plot_bg)
+        for i, plot in enumerate(self._plots):
+            plot.setTitle(AXIS_NAMES[i], color=t.plot_title_color, size="12pt")
+            plot.getAxis("bottom").setPen(t.plot_axis)
+            plot.getAxis("left").setPen(t.plot_axis)
+            plot.showGrid(x=True, y=True, alpha=t.plot_grid_alpha)
+        for ref in self._ref_lines:
+            ref.setPen(pg.mkPen(t.plot_ref_line, width=1, style=Qt.PenStyle.DashLine))
+        self._table_title.setStyleSheet(
+            f"color: {t.fg_dim}; font-size: 13px; font-weight: bold;"
+        )
+        self._table.setStyleSheet(f"""
+            QTableWidget {{
+                background: {t.bg_input};
+                color: {t.fg};
+                gridline-color: {t.border};
+                border: 1px solid {t.border};
+                font-size: 11px;
+            }}
+            QTableWidget::item {{
+                padding: 2px 6px;
+            }}
+            QHeaderView::section {{
+                background: {t.bg_alt};
+                color: {t.fg_dim};
+                border: 1px solid {t.border};
+                padding: 3px 6px;
+                font-weight: bold;
+                font-size: 11px;
+            }}
+        """)
 

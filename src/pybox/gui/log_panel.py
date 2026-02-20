@@ -21,6 +21,7 @@ from PyQt6.QtWidgets import (
 )
 
 from pybox.gui.models import LogEntry, load_log_entry, LOG_COLORS
+from pybox.gui.theme import Theme, current as current_theme
 
 
 def _color_icon(hex_color: str, size: int = 14) -> QIcon:
@@ -119,26 +120,31 @@ class LogItemWidget(QFrame):
         super().mousePressEvent(event)
 
     def set_selected(self, selected: bool):
+        t = current_theme()
+        self.apply_theme(t, selected)
+
+    def apply_theme(self, t: Theme, selected: bool = False):
+        """Update widget colors for the given theme."""
         if selected:
-            self.setStyleSheet("""
-                LogItemWidget {
-                    background: #3a3a5a;
-                    border: 1px solid #7777bb;
+            self.setStyleSheet(f"""
+                LogItemWidget {{
+                    background: {t.accent_bg};
+                    border: 1px solid {t.accent};
                     border-radius: 4px;
                     padding: 4px;
-                }
+                }}
             """)
         else:
-            self.setStyleSheet("""
-                LogItemWidget {
-                    background: #2d2d2d;
-                    border: 1px solid #444;
+            self.setStyleSheet(f"""
+                LogItemWidget {{
+                    background: {t.bg_alt};
+                    border: 1px solid {t.border};
                     border-radius: 4px;
                     padding: 4px;
-                }
-                LogItemWidget:hover {
-                    border: 1px solid #666;
-                }
+                }}
+                LogItemWidget:hover {{
+                    border: 1px solid {t.border_light};
+                }}
             """)
 
 
@@ -373,6 +379,17 @@ class LogPanel(QWidget):
         self.btn_load.setText(self.tr("Load File(s)"))
         self.btn_clear.setText(self.tr("Clear All"))
         self._update_info_label()
+
+    def apply_theme(self, t: Theme):
+        """Update colors to match the given theme."""
+        self._title.setStyleSheet(
+            f"color: {t.fg}; font-size: 15px; font-weight: bold;"
+        )
+        self.btn_load.setStyleSheet(self._button_style(t.btn_primary_bg))
+        self.btn_clear.setStyleSheet(self._button_style(t.btn_danger_bg))
+        self.info_label.setStyleSheet(f"color: {t.fg_dim}; font-size: 11px;")
+        for w in self._item_widgets:
+            w.apply_theme(t, w.index == self._selected_index)
 
     @property
     def selected_entry(self) -> LogEntry | None:
