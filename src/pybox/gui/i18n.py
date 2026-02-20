@@ -34,6 +34,7 @@ _TRANSLATIONS_DIR = Path(__file__).resolve().parent / "translations"
 
 # Keep references so they are not garbage-collected
 _translators: list[QTranslator] = []
+_current_locale: str = "en"
 
 
 def available_locales() -> list[str]:
@@ -48,6 +49,22 @@ def available_locales() -> list[str]:
     return codes
 
 
+def current_locale() -> str:
+    """Return the currently active locale code."""
+    return _current_locale
+
+
+def uninstall() -> None:
+    """Remove all currently installed translators."""
+    global _current_locale
+    app = QCoreApplication.instance()
+    if app is not None:
+        for t in _translators:
+            app.removeTranslator(t)
+    _translators.clear()
+    _current_locale = "en"
+
+
 def install(locale_code: Optional[str] = None) -> bool:
     """Install a translator for *locale_code* into the running QApplication.
 
@@ -57,12 +74,21 @@ def install(locale_code: Optional[str] = None) -> bool:
     Must be called **after** ``QApplication()`` is created but **before**
     any translatable widgets are instantiated.
     """
+    global _current_locale
     app = QCoreApplication.instance()
     if app is None:
         return False
 
+    # Remove previous translators first
+    uninstall()
+
     if locale_code is None:
-        locale_code = QLocale.system().name()[:2]  # e.g. "de_DE" → "de"
+        locale_code = QLocale.system().name()[:2]  # e.g. "de_DE" -> "de"
+
+    _current_locale = locale_code
+
+    if locale_code == "en":
+        return True  # English is the source language, no .qm needed
 
     # Try to load Qt's own translations (buttons, dialogs, etc.)
     qt_translator = QTranslator()

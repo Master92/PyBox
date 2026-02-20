@@ -116,6 +116,22 @@
         <source>Step response computed for {count} log(s)</source>
         <translation>Step-Response für {count} Log(s) berechnet</translation>
     </message>
+    <message>
+        <source>Language</source>
+        <translation>Sprache</translation>
+    </message>
+    <message>
+        <source>Help</source>
+        <translation>Hilfe</translation>
+    </message>
+    <message>
+        <source>About PyBox</source>
+        <translation>Über PyBox</translation>
+    </message>
+    <message>
+        <source>&lt;h3&gt;PyBox&lt;/h3&gt;&lt;p&gt;Version 0.1.0&lt;/p&gt;&lt;p&gt;Betaflight Blackbox log decoder and analysis tool.&lt;/p&gt;&lt;p&gt;Built with Python, PyQt6, pyqtgraph, NumPy &amp;amp; SciPy.&lt;/p&gt;&lt;p&gt;License: GPLv3&lt;/p&gt;</source>
+        <translation>&lt;h3&gt;PyBox&lt;/h3&gt;&lt;p&gt;Version 0.1.0&lt;/p&gt;&lt;p&gt;Betaflight-Blackbox-Log-Decoder und Analysetool.&lt;/p&gt;&lt;p&gt;Erstellt mit Python, PyQt6, pyqtgraph, NumPy &amp;amp; SciPy.&lt;/p&gt;&lt;p&gt;Lizenz: GPLv3&lt;/p&gt;</translation>
+    </message>
 </context>
 
 </TS>

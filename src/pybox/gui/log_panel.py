@@ -166,9 +166,9 @@ class LogPanel(QWidget):
         layout.setSpacing(8)
 
         # Title
-        title = QLabel(self.tr("Loaded Logs"))
-        title.setStyleSheet("color: #eee; font-size: 15px; font-weight: bold;")
-        layout.addWidget(title)
+        self._title = QLabel(self.tr("Loaded Logs"))
+        self._title.setStyleSheet("color: #eee; font-size: 15px; font-weight: bold;")
+        layout.addWidget(self._title)
 
         # Buttons row
         btn_row = QHBoxLayout()
@@ -366,6 +366,13 @@ class LogPanel(QWidget):
         else:
             visible = sum(1 for e in self.entries if e.visible)
             self.info_label.setText(self.tr("{count} log(s) loaded, {visible} visible").format(count=n, visible=visible))
+
+    def retranslate_ui(self):
+        """Refresh translatable strings (called on runtime language switch)."""
+        self._title.setText(self.tr("Loaded Logs"))
+        self.btn_load.setText(self.tr("Load File(s)"))
+        self.btn_clear.setText(self.tr("Clear All"))
+        self._update_info_label()
 
     @property
     def selected_entry(self) -> LogEntry | None:

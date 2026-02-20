@@ -13,12 +13,14 @@ from PyQt6.QtWidgets import (
     QLabel,
     QStatusBar,
     QApplication,
+    QMessageBox,
 )
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QAction, QActionGroup
 
 from pybox.gui.log_panel import LogPanel
 from pybox.gui.gyro_preview import GyroPreviewWidget
 from pybox.gui.step_plots import StepResponsePlots
+from pybox.gui import i18n
 
 
 class MainWindow(QMainWindow):
@@ -30,6 +32,7 @@ class MainWindow(QMainWindow):
         self.resize(1400, 900)
 
         self._apply_dark_theme()
+        self._build_menu_bar()
 
         # ── Central widget ────────────────────────────────────────────
         central = QWidget()
@@ -53,9 +56,9 @@ class MainWindow(QMainWindow):
         gyro_layout.setSpacing(2)
 
         gyro_header = QHBoxLayout()
-        gyro_title = QLabel(self.tr("Gyro Preview – drag the shaded region to set analysis range"))
-        gyro_title.setStyleSheet("color: #aaa; font-size: 11px;")
-        gyro_header.addWidget(gyro_title)
+        self._gyro_title = QLabel(self.tr("Gyro Preview – drag the shaded region to set analysis range"))
+        self._gyro_title.setStyleSheet("color: #aaa; font-size: 11px;")
+        gyro_header.addWidget(self._gyro_title)
 
         self.btn_compute = QPushButton(self.tr("Compute Step Response"))
         self.btn_compute.setStyleSheet("""
@@ -174,6 +177,93 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage(f"Error: {e}")
         finally:
             self.btn_compute.setEnabled(True)
+
+    # ── Menu bar ──────────────────────────────────────────────────────
+
+    # Language display names (not translated – always shown in native form)
+    _LANG_NAMES = {
+        "en": "English",
+        "de": "Deutsch",
+    }
+
+    def _build_menu_bar(self):
+        menu_bar = self.menuBar()
+        menu_bar.setStyleSheet("""
+            QMenuBar {
+                background: #1e1e1e;
+                color: #ccc;
+                border-bottom: 1px solid #333;
+                font-size: 12px;
+            }
+            QMenuBar::item:selected { background: #3a3a5a; }
+            QMenu {
+                background: #2d2d2d;
+                color: #ccc;
+                border: 1px solid #444;
+            }
+            QMenu::item:selected { background: #3a3a5a; }
+        """)
+
+        # ── Language menu ───────────────────────────────────────────
+        self._lang_menu = menu_bar.addMenu(self.tr("Language"))
+        self._lang_group = QActionGroup(self)
+        self._lang_group.setExclusive(True)
+
+        current = i18n.current_locale()
+        available = ["en"] + i18n.available_locales()
+
+        self._lang_actions: dict[str, QAction] = {}
+        for code in available:
+            display = self._LANG_NAMES.get(code, code)
+            action = QAction(display, self, checkable=True)
+            action.setData(code)
+            action.setChecked(code == current)
+            action.triggered.connect(lambda checked, c=code: self._on_language_changed(c))
+            self._lang_group.addAction(action)
+            self._lang_menu.addAction(action)
+            self._lang_actions[code] = action
+
+        # ── Help menu ──────────────────────────────────────────────
+        self._help_menu = menu_bar.addMenu(self.tr("Help"))
+        self._about_action = QAction(self.tr("About PyBox"), self)
+        self._about_action.triggered.connect(self._on_about)
+        self._help_menu.addAction(self._about_action)
+
+    def _on_language_changed(self, locale_code: str):
+        """Switch UI language at runtime."""
+        if locale_code == i18n.current_locale():
+            return
+        i18n.install(locale_code)
+        self._retranslate_ui()
+
+    def _retranslate_ui(self):
+        """Refresh all translatable strings in the current window."""
+        self.setWindowTitle("PyBox \u2013 Blackbox Log Analyzer")
+        self._gyro_title.setText(
+            self.tr("Gyro Preview \u2013 drag the shaded region to set analysis range")
+        )
+        self.btn_compute.setText(self.tr("Compute Step Response"))
+        self.status_bar.showMessage(
+            self.tr("Ready \u2013 load Blackbox log files to begin")
+        )
+        self.log_panel.retranslate_ui()
+        # Menus
+        self._lang_menu.setTitle(self.tr("Language"))
+        self._help_menu.setTitle(self.tr("Help"))
+        self._about_action.setText(self.tr("About PyBox"))
+
+    def _on_about(self):
+        QMessageBox.about(
+            self,
+            self.tr("About PyBox"),
+            self.tr(
+                "<h3>PyBox</h3>"
+                "<p>Version 0.1.0</p>"
+                "<p>Betaflight Blackbox log decoder and analysis tool.</p>"
+                "<p>Built with Python, PyQt6, pyqtgraph, NumPy &amp; SciPy.</p>"
+                "<p>License: GPLv3</p>"
+            ),
+        )
 
     # ── Theming ───────────────────────────────────────────────────────
 
