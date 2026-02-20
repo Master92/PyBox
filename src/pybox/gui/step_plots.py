@@ -49,7 +49,7 @@ class StepResponsePlots(QWidget):
         controls = QHBoxLayout()
         controls.setContentsMargins(8, 4, 8, 0)
         controls.addStretch()
-        self._log_scale_cb = QCheckBox("Logarithmic Y-Axis")
+        self._log_scale_cb = QCheckBox(self.tr("Logarithmic Y-Axis"))
         self._log_scale_cb.setStyleSheet("color: #ccc; font-size: 12px;")
         self._log_scale_cb.stateChanged.connect(self._on_log_scale_changed)
         controls.addWidget(self._log_scale_cb)
@@ -99,7 +99,7 @@ class StepResponsePlots(QWidget):
         table_layout = QVBoxLayout(table_container)
         table_layout.setContentsMargins(8, 4, 8, 4)
 
-        table_title = QLabel("PIDFF Configuration")
+        table_title = QLabel(self.tr("PIDFF Configuration"))
         table_title.setStyleSheet("color: #ccc; font-size: 13px; font-weight: bold;")
         table_layout.addWidget(table_title)
 
@@ -196,6 +196,7 @@ class StepResponsePlots(QWidget):
                 sr_khz,
                 min_input=20.0,
                 duration_ms=2000.0,
+                segment_duration_ms=5000.0,
             )
 
             if len(result.mean_response) == 0:

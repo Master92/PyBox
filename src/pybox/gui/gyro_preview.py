@@ -45,6 +45,8 @@ class GyroPreviewWidget(QWidget):
         self._plot.showGrid(x=True, y=True, alpha=0.15)
         self._plot.getAxis("bottom").setPen("#888")
         self._plot.getAxis("left").setPen("#888")
+        self._plot.setMouseEnabled(x=False, y=False)
+        self._plot.hideButtons()
 
         # Create 3 curves (roll, pitch, yaw) – no in-plot legend
         for i in range(3):
@@ -85,7 +87,7 @@ class GyroPreviewWidget(QWidget):
 
         # Placeholder text
         self._placeholder = pg.TextItem(
-            "Select a log to preview gyro data",
+            self.tr("Select a log to preview gyro data"),
             color="#666",
             anchor=(0.5, 0.5),
         )

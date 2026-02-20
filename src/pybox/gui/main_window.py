@@ -53,11 +53,11 @@ class MainWindow(QMainWindow):
         gyro_layout.setSpacing(2)
 
         gyro_header = QHBoxLayout()
-        gyro_title = QLabel("Gyro Preview – drag the shaded region to set analysis range")
+        gyro_title = QLabel(self.tr("Gyro Preview – drag the shaded region to set analysis range"))
         gyro_title.setStyleSheet("color: #aaa; font-size: 11px;")
         gyro_header.addWidget(gyro_title)
 
-        self.btn_compute = QPushButton("Compute Step Response")
+        self.btn_compute = QPushButton(self.tr("Compute Step Response"))
         self.btn_compute.setStyleSheet("""
             QPushButton {
                 background: #4a8a4a;
@@ -95,7 +95,7 @@ class MainWindow(QMainWindow):
         self.status_bar = QStatusBar()
         self.status_bar.setStyleSheet("color: #aaa; font-size: 11px;")
         self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage("Ready – load Blackbox log files to begin")
+        self.status_bar.showMessage(self.tr("Ready – load Blackbox log files to begin"))
 
         # ── Connect signals ───────────────────────────────────────────
         self.log_panel.log_added.connect(self._on_log_added)
@@ -109,16 +109,19 @@ class MainWindow(QMainWindow):
         self.btn_compute.setEnabled(True)
         entry = self.log_panel.entries[index]
         self.status_bar.showMessage(
-            f"Loaded: {entry.label} ({entry.duration_s:.1f}s, "
-            f"{entry.decoded.sample_rate_hz:.0f} Hz)"
+            self.tr("Loaded: {label} ({dur}s, {rate} Hz)").format(
+                label=entry.label, dur=f"{entry.duration_s:.1f}",
+                rate=f"{entry.decoded.sample_rate_hz:.0f}")
         )
 
     def _on_log_selected(self, index: int):
         entry = self.log_panel.entries[index]
         self.gyro_preview.show_entry(entry)
         self.status_bar.showMessage(
-            f"Selected: {entry.label} – range: "
-            f"{entry.time_start_s:.1f}s – {entry.time_end_s:.1f}s"
+            self.tr("Selected: {label} – range: {start}s – {end}s").format(
+                label=entry.label,
+                start=f"{entry.time_start_s:.1f}",
+                end=f"{entry.time_end_s:.1f}")
         )
 
     def _on_visibility_changed(self):
@@ -132,23 +135,23 @@ class MainWindow(QMainWindow):
         self.gyro_preview.clear_preview()
         self.step_plots.clear_plots()
         self.btn_compute.setEnabled(False)
-        self.status_bar.showMessage("All logs cleared")
+        self.status_bar.showMessage(self.tr("All logs cleared"))
 
     def _on_compute(self):
         entries = self.log_panel.entries
         visible = [e for e in entries if e.visible]
         if not visible:
-            self.status_bar.showMessage("No visible logs to analyze")
+            self.status_bar.showMessage(self.tr("No visible logs to analyze"))
             return
 
         self.btn_compute.setEnabled(False)
-        self.status_bar.showMessage("Computing step responses...")
+        self.status_bar.showMessage(self.tr("Computing step responses..."))
         QApplication.processEvents()
 
         try:
             self.step_plots.update_plots(entries)
             self.status_bar.showMessage(
-                f"Step response computed for {len(visible)} log(s)"
+                self.tr("Step response computed for {count} log(s)").format(count=len(visible))
             )
         except Exception as e:
             self.status_bar.showMessage(f"Error: {e}")

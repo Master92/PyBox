@@ -144,7 +144,7 @@ class LogPanel(QWidget):
         layout.setSpacing(8)
 
         # Title
-        title = QLabel("Loaded Logs")
+        title = QLabel(self.tr("Loaded Logs"))
         title.setStyleSheet("color: #eee; font-size: 15px; font-weight: bold;")
         layout.addWidget(title)
 
@@ -152,12 +152,12 @@ class LogPanel(QWidget):
         btn_row = QHBoxLayout()
         btn_row.setSpacing(6)
 
-        self.btn_load = QPushButton("Load File(s)")
+        self.btn_load = QPushButton(self.tr("Load File(s)"))
         self.btn_load.setStyleSheet(self._button_style("#4a6fa5"))
         self.btn_load.clicked.connect(self._on_load_files)
         btn_row.addWidget(self.btn_load)
 
-        self.btn_clear = QPushButton("Clear All")
+        self.btn_clear = QPushButton(self.tr("Clear All"))
         self.btn_clear.setStyleSheet(self._button_style("#884444"))
         self.btn_clear.clicked.connect(self._on_clear_all)
         btn_row.addWidget(self.btn_clear)
@@ -180,7 +180,7 @@ class LogPanel(QWidget):
         layout.addWidget(scroll, stretch=1)
 
         # Info label at bottom
-        self.info_label = QLabel("No logs loaded")
+        self.info_label = QLabel(self.tr("No logs loaded"))
         self.info_label.setStyleSheet("color: #888; font-size: 11px;")
         layout.addWidget(self.info_label)
 
@@ -206,9 +206,9 @@ class LogPanel(QWidget):
     def _on_load_files(self):
         files, _ = QFileDialog.getOpenFileNames(
             self,
-            "Open Blackbox Log(s)",
+            self.tr("Open Blackbox Log(s)"),
             "",
-            "Blackbox Logs (*.bbl *.bfl *.txt);;All Files (*)",
+            self.tr("Blackbox Logs (*.bbl *.bfl *.txt);;All Files (*)"),
         )
         if not files:
             return
@@ -224,13 +224,13 @@ class LogPanel(QWidget):
                 file_log_counts.append((f, fl.log_count))
                 total_logs += fl.log_count
             except Exception as e:
-                QMessageBox.warning(self, "Error", f"Failed to open {f}:\n{e}")
+                QMessageBox.warning(self, self.tr("Error"), self.tr("Failed to open {path}:\n{error}").format(path=f, error=e))
                 file_log_counts.append((f, 0))
 
         if total_logs == 0:
             return
 
-        progress = QProgressDialog("Decoding logs...", "Cancel", 0, total_logs, self)
+        progress = QProgressDialog(self.tr("Decoding logs..."), self.tr("Cancel"), 0, total_logs, self)
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setMinimumDuration(300)
 
@@ -249,8 +249,8 @@ class LogPanel(QWidget):
                     self._color_counter += 1
                 except Exception as e:
                     QMessageBox.warning(
-                        self, "Decode Error",
-                        f"Failed to decode log {log_idx + 1} in {file_path}:\n{e}",
+                        self, self.tr("Decode Error"),
+                        self.tr("Failed to decode log {idx} in {path}:\n{error}").format(idx=log_idx + 1, path=file_path, error=e),
                     )
                 loaded += 1
 
@@ -305,10 +305,10 @@ class LogPanel(QWidget):
     def _update_info_label(self):
         n = len(self.entries)
         if n == 0:
-            self.info_label.setText("No logs loaded")
+            self.info_label.setText(self.tr("No logs loaded"))
         else:
             visible = sum(1 for e in self.entries if e.visible)
-            self.info_label.setText(f"{n} log(s) loaded, {visible} visible")
+            self.info_label.setText(self.tr("{count} log(s) loaded, {visible} visible").format(count=n, visible=visible))
 
     @property
     def selected_entry(self) -> LogEntry | None:
