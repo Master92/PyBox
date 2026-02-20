@@ -14,7 +14,7 @@ from pathlib import Path
 block_cipher = None
 
 a = Analysis(
-    ['src/pybox/cli.py'],
+    ['src/pybox/gui/app.py'],
     pathex=['src'],
     binaries=[],
     datas=[
@@ -44,7 +44,8 @@ a = Analysis(
         'pybox.gui.step_plots',
         'pybox.gui.models',
         'pybox.gui.app',
-        'click',
+        'pybox.gui.theme',
+        'pybox.gui.settings',
         'PyQt6',
         'pyqtgraph',
         'numpy',
@@ -85,7 +86,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=True,
+    console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
