@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 import numpy as np
 import pyqtgraph as pg
 from PyQt6.QtCore import Qt
@@ -16,9 +14,8 @@ from PyQt6.QtWidgets import (
     QTableWidgetItem,
     QHeaderView,
     QSplitter,
-    QSizePolicy,
 )
-from PyQt6.QtGui import QColor, QFont
+from PyQt6.QtGui import QColor
 
 from pybox.gui.models import LogEntry
 from pybox.analysis.step_response import estimate_step_response
@@ -54,21 +51,20 @@ class StepResponsePlots(QWidget):
         self._plots: list[pg.PlotItem] = []
         self._ref_lines: list[pg.InfiniteLine] = []
         self._curves: dict[tuple[int, int], pg.PlotDataItem] = {}  # (log_idx, axis) → curve
-        self._bands: dict[tuple[int, int], pg.FillBetweenItem] = {}  # confidence bands
 
         for i, name in enumerate(AXIS_NAMES):
             if i > 0:
                 plots_widget.nextRow()
             plot = plots_widget.addPlot(row=i, col=0)
             plot.setTitle(name, color="#ddd", size="12pt")
-            plot.setLabel("bottom", "Time", units="ms")
+            plot.setLabel("bottom", "Time (ms)")
             plot.setLabel("left", "Response")
             plot.showGrid(x=True, y=True, alpha=0.15)
             plot.getAxis("bottom").setPen("#888")
             plot.getAxis("left").setPen("#888")
             plot.setYRange(0, 1.5)
-            plot.setXRange(0, 2000, padding=0)
-            plot.setLimits(xMin=0, xMax=2000)
+            plot.setXRange(0, 500, padding=0)
+            plot.setLimits(xMin=0, xMax=500)
             plot.setMouseEnabled(x=False, y=False)
             plot.hideButtons()
 
@@ -136,23 +132,12 @@ class StepResponsePlots(QWidget):
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 1)
 
-    @staticmethod
-    def _smooth(data: np.ndarray, window: int = 15) -> np.ndarray:
-        """Simple moving-average smoothing."""
-        if window < 2 or len(data) < window:
-            return data
-        kernel = np.ones(window) / window
-        return np.convolve(data, kernel, mode="same")
-
     def update_plots(self, entries: list[LogEntry]):
         """Recompute and redraw step responses for all visible entries."""
-        # Remove old curves and bands
+        # Remove old curves
         for (log_idx, axis), curve in self._curves.items():
             self._plots[axis].removeItem(curve)
         self._curves.clear()
-        for (log_idx, axis), band in self._bands.items():
-            self._plots[axis].removeItem(band)
-        self._bands.clear()
 
         # Clear legends
         for plot in self._plots:
@@ -164,9 +149,9 @@ class StepResponsePlots(QWidget):
                 continue
             self._compute_and_plot(entry, log_idx)
 
-        # Auto-range Y for each plot
+        # Keep fixed Y range for consistent comparison
         for plot in self._plots:
-            plot.enableAutoRange(axis="y")
+            plot.setYRange(0, 1.5)
 
         # Update table
         self._update_table(entries)
@@ -198,32 +183,14 @@ class StepResponsePlots(QWidget):
                 setpoints[axis],
                 gyros[axis],
                 sr_khz,
-                min_input=20.0,
-                duration_ms=2000.0,
-                segment_duration_ms=5000.0,
             )
 
             if len(result.mean_response) == 0:
                 continue
 
-            # Smooth the mean for a cleaner comparison curve
-            mean = self._smooth(result.mean_response, window=15)
-            std = self._smooth(result.std_response, window=15)
-
-            # ±1σ confidence band (semi-transparent fill)
-            upper = mean + std
-            lower = mean - std
-            band = pg.FillBetweenItem(
-                pg.PlotDataItem(result.time_ms, upper),
-                pg.PlotDataItem(result.time_ms, lower),
-                brush=pg.mkBrush(QColor(color).red(), QColor(color).green(), QColor(color).blue(), 30),
-            )
-            self._plots[axis].addItem(band)
-            self._bands[(log_idx, axis)] = band
-
             curve = self._plots[axis].plot(
                 result.time_ms,
-                mean,
+                result.mean_response,
                 pen=pen,
                 name=entry.label,
             )
@@ -260,13 +227,10 @@ class StepResponsePlots(QWidget):
             self._table.setItem(row, 6, QTableWidgetItem(f"{range_s:.1f}s"))
 
     def clear_plots(self):
-        """Remove all curves, bands, and clear the table."""
+        """Remove all curves and clear the table."""
         for (log_idx, axis), curve in self._curves.items():
             self._plots[axis].removeItem(curve)
         self._curves.clear()
-        for (log_idx, axis), band in self._bands.items():
-            self._plots[axis].removeItem(band)
-        self._bands.clear()
         for plot in self._plots:
             if plot.legend is not None:
                 plot.legend.clear()
