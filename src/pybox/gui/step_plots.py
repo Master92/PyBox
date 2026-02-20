@@ -17,7 +17,6 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QSplitter,
     QSizePolicy,
-    QCheckBox,
 )
 from PyQt6.QtGui import QColor, QFont
 
@@ -44,16 +43,6 @@ class StepResponsePlots(QWidget):
         # Splitter: plots on top, table on bottom
         splitter = QSplitter(Qt.Orientation.Vertical)
         layout.addWidget(splitter)
-
-        # ── Controls row ──────────────────────────────────────────────
-        controls = QHBoxLayout()
-        controls.setContentsMargins(8, 4, 8, 0)
-        controls.addStretch()
-        self._log_scale_cb = QCheckBox(self.tr("Logarithmic Y-Axis"))
-        self._log_scale_cb.setStyleSheet("color: #ccc; font-size: 12px;")
-        self._log_scale_cb.stateChanged.connect(self._on_log_scale_changed)
-        controls.addWidget(self._log_scale_cb)
-        layout.addLayout(controls)
 
         # ── Plots area ────────────────────────────────────────────────
         plots_widget = pg.GraphicsLayoutWidget()
@@ -258,10 +247,3 @@ class StepResponsePlots(QWidget):
                 self._curves[key].setVisible(visible)
         self._update_table(entries)
 
-    def _on_log_scale_changed(self, state):
-        """Toggle logarithmic Y-axis on all step response plots."""
-        use_log = state == Qt.CheckState.Checked.value
-        for plot in self._plots:
-            plot.setLogMode(x=False, y=use_log)
-            if not use_log:
-                plot.setYRange(0, 1.5)

@@ -73,10 +73,6 @@
 <context>
     <name>StepResponsePlots</name>
     <message>
-        <source>Logarithmic Y-Axis</source>
-        <translation>Logarithmische Y-Achse</translation>
-    </message>
-    <message>
         <source>PIDFF Configuration</source>
         <translation>PIDFF-Konfiguration</translation>
     </message>
