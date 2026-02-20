@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
 import numpy as np
 import pyqtgraph as pg
 
 from pybox.gui.models import LogEntry
 
 
-class GyroPreviewWidget(pg.GraphicsLayoutWidget):
+class GyroPreviewWidget(QWidget):
     """Shows gyro traces for the currently selected log with a draggable
-    LinearRegionItem to set the analysis time range."""
+    LinearRegionItem to set the analysis time range.
+
+    The legend is rendered as a fixed label row below the plot."""
 
     time_range_changed = pyqtSignal(float, float)  # (start_s, end_s)
 
@@ -20,35 +23,54 @@ class GyroPreviewWidget(pg.GraphicsLayoutWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setBackground("#1e1e1e")
         self.setMinimumHeight(180)
 
         self._entry: LogEntry | None = None
         self._curves: list[pg.PlotDataItem] = []
         self._region: pg.LinearRegionItem | None = None
 
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(2)
+
+        # Plot widget
+        self._gfx = pg.GraphicsLayoutWidget()
+        self._gfx.setBackground("#1e1e1e")
+        layout.addWidget(self._gfx, stretch=1)
+
         # Single plot spanning full width
-        self._plot = self.addPlot(row=0, col=0)
+        self._plot = self._gfx.addPlot(row=0, col=0)
         self._plot.setLabel("bottom", "Time", units="s")
         self._plot.setLabel("left", "Gyro", units="deg/s")
         self._plot.showGrid(x=True, y=True, alpha=0.15)
         self._plot.getAxis("bottom").setPen("#888")
         self._plot.getAxis("left").setPen("#888")
 
-        # Legend
-        self._legend = self._plot.addLegend(
-            offset=(-10, 10),
-            labelTextColor="#ccc",
-            labelTextSize="10pt",
-        )
-
-        # Create 3 curves (roll, pitch, yaw)
+        # Create 3 curves (roll, pitch, yaw) – no in-plot legend
         for i in range(3):
             curve = self._plot.plot(
                 pen=pg.mkPen(self.AXIS_COLORS[i], width=1),
-                name=self.AXIS_NAMES[i],
             )
             self._curves.append(curve)
+
+        # Fixed legend row below the plot
+        legend_row = QHBoxLayout()
+        legend_row.setContentsMargins(8, 0, 8, 2)
+        legend_row.addStretch()
+        for i in range(3):
+            swatch = QLabel()
+            swatch.setFixedSize(14, 3)
+            swatch.setStyleSheet(
+                f"background: {self.AXIS_COLORS[i]}; border: none;"
+            )
+            legend_row.addWidget(swatch)
+            lbl = QLabel(self.AXIS_NAMES[i])
+            lbl.setStyleSheet("color: #ccc; font-size: 11px; border: none;")
+            legend_row.addWidget(lbl)
+            if i < 2:
+                legend_row.addSpacing(12)
+        legend_row.addStretch()
+        layout.addLayout(legend_row)
 
         # Draggable region
         self._region = pg.LinearRegionItem(

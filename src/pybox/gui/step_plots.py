@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
     QHeaderView,
     QSplitter,
     QSizePolicy,
+    QCheckBox,
 )
 from PyQt6.QtGui import QColor, QFont
 
@@ -44,6 +45,16 @@ class StepResponsePlots(QWidget):
         splitter = QSplitter(Qt.Orientation.Vertical)
         layout.addWidget(splitter)
 
+        # ── Controls row ──────────────────────────────────────────────
+        controls = QHBoxLayout()
+        controls.setContentsMargins(8, 4, 8, 0)
+        controls.addStretch()
+        self._log_scale_cb = QCheckBox("Logarithmic Y-Axis")
+        self._log_scale_cb.setStyleSheet("color: #ccc; font-size: 12px;")
+        self._log_scale_cb.stateChanged.connect(self._on_log_scale_changed)
+        controls.addWidget(self._log_scale_cb)
+        layout.addLayout(controls)
+
         # ── Plots area ────────────────────────────────────────────────
         plots_widget = pg.GraphicsLayoutWidget()
         plots_widget.setBackground("#1e1e1e")
@@ -64,7 +75,10 @@ class StepResponsePlots(QWidget):
             plot.getAxis("bottom").setPen("#888")
             plot.getAxis("left").setPen("#888")
             plot.setYRange(0, 1.5)
-            plot.setXRange(0, 500)
+            plot.setXRange(0, 2000, padding=0)
+            plot.setLimits(xMin=0, xMax=2000)
+            plot.setMouseEnabled(x=False, y=False)
+            plot.hideButtons()
 
             # Reference line at y=1 (steady state)
             ref_line = pg.InfiniteLine(
@@ -181,7 +195,7 @@ class StepResponsePlots(QWidget):
                 gyros[axis],
                 sr_khz,
                 min_input=20.0,
-                duration_ms=500.0,
+                duration_ms=2000.0,
             )
 
             if len(result.mean_response) == 0:
@@ -242,3 +256,11 @@ class StepResponsePlots(QWidget):
             if key in self._curves:
                 self._curves[key].setVisible(visible)
         self._update_table(entries)
+
+    def _on_log_scale_changed(self, state):
+        """Toggle logarithmic Y-axis on all step response plots."""
+        use_log = state == Qt.CheckState.Checked.value
+        for plot in self._plots:
+            plot.setLogMode(x=False, y=use_log)
+            if not use_log:
+                plot.setYRange(0, 1.5)
