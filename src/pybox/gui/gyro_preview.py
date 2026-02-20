@@ -87,10 +87,9 @@ class GyroPreviewWidget(QWidget):
             hoverPen=pg.mkPen("#ccccff", width=2),
             movable=False,
         )
-        # Make edge handles individually movable with a larger grab area
+        # Make edge handles individually movable
         for line in self._region.lines:
             line.setMovable(True)
-            line.addMarker("^", position=0.5, size=12)
         self._region.sigRegionChangeFinished.connect(self._on_region_changed)
         self._plot.addItem(self._region)
 
