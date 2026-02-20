@@ -36,10 +36,11 @@ def _color_icon(hex_color: str, size: int = 14) -> QIcon:
 
 
 class LogItemWidget(QFrame):
-    """Single row in the log list – checkbox + color swatch + label."""
+    """Single row in the log list – checkbox + color swatch + label + delete."""
 
     visibility_changed = pyqtSignal(int, bool)   # (entry_index, visible)
     selection_changed = pyqtSignal(int)           # entry_index (clicked for gyro preview)
+    delete_requested = pyqtSignal(int)            # entry_index to remove
 
     def __init__(self, entry: LogEntry, index: int, parent=None):
         super().__init__(parent)
@@ -87,6 +88,26 @@ class LogItemWidget(QFrame):
         dur_label.setStyleSheet("color: #888; font-size: 11px; border: none;")
         layout.addWidget(dur_label)
 
+        # Delete button
+        del_btn = QPushButton("\u2715")
+        del_btn.setFixedSize(20, 20)
+        del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        del_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #888;
+                border: none;
+                font-size: 13px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                color: #ff6666;
+            }
+        """)
+        del_btn.setToolTip("Remove this log")
+        del_btn.clicked.connect(lambda: self.delete_requested.emit(self.index))
+        layout.addWidget(del_btn)
+
     def _on_check_changed(self, state):
         visible = state == Qt.CheckState.Checked.value
         self.entry.visible = visible
@@ -127,6 +148,7 @@ class LogPanel(QWidget):
     log_added = pyqtSignal(int)             # index of newly added log
     log_selected = pyqtSignal(int)          # index of log selected for gyro preview
     log_visibility_changed = pyqtSignal()   # any visibility changed
+    log_removed = pyqtSignal()              # a single log was removed
     logs_cleared = pyqtSignal()             # all logs cleared
 
     def __init__(self, parent=None):
@@ -264,6 +286,7 @@ class LogPanel(QWidget):
         item = LogItemWidget(entry, idx)
         item.visibility_changed.connect(self._on_visibility_changed)
         item.selection_changed.connect(self._on_item_selected)
+        item.delete_requested.connect(self._on_delete_entry)
         self._item_widgets.append(item)
 
         # Insert before the stretch
@@ -287,6 +310,40 @@ class LogPanel(QWidget):
 
     def _on_visibility_changed(self, index: int, visible: bool):
         self.log_visibility_changed.emit()
+
+    def _on_delete_entry(self, index: int):
+        """Remove a single log entry and rebuild indices."""
+        if index < 0 or index >= len(self.entries):
+            return
+
+        # Remove widget
+        widget = self._item_widgets[index]
+        self._list_layout.removeWidget(widget)
+        widget.deleteLater()
+
+        # Remove from lists
+        del self.entries[index]
+        del self._item_widgets[index]
+
+        # Rebuild indices on remaining widgets
+        for i, w in enumerate(self._item_widgets):
+            w.index = i
+
+        # Fix selection
+        if self._selected_index == index:
+            self._selected_index = -1
+            if self.entries:
+                new_sel = min(index, len(self.entries) - 1)
+                self._on_item_selected(new_sel)
+            else:
+                self.log_removed.emit()
+                self._update_info_label()
+                return
+        elif self._selected_index > index:
+            self._selected_index -= 1
+
+        self._update_info_label()
+        self.log_removed.emit()
 
     def _on_clear_all(self):
         if not self.entries:

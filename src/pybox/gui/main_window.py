@@ -101,6 +101,7 @@ class MainWindow(QMainWindow):
         self.log_panel.log_added.connect(self._on_log_added)
         self.log_panel.log_selected.connect(self._on_log_selected)
         self.log_panel.log_visibility_changed.connect(self._on_visibility_changed)
+        self.log_panel.log_removed.connect(self._on_log_removed)
         self.log_panel.logs_cleared.connect(self._on_logs_cleared)
 
     # ── Signal handlers ───────────────────────────────────────────────
@@ -130,6 +131,22 @@ class MainWindow(QMainWindow):
         if any(True for key in self.step_plots._curves):
             self.step_plots.update_plots(entries)
         self.log_panel._update_info_label()
+
+    def _on_log_removed(self):
+        """Handle removal of a single log entry."""
+        entries = self.log_panel.entries
+        if not entries:
+            self.gyro_preview.clear_preview()
+            self.step_plots.clear_plots()
+            self.btn_compute.setEnabled(False)
+            self.status_bar.showMessage(self.tr("All logs cleared"))
+            return
+        # Refresh gyro preview for current selection
+        sel = self.log_panel.selected_entry
+        self.gyro_preview.show_entry(sel)
+        # Refresh step plots if they were computed
+        if any(True for key in self.step_plots._curves):
+            self.step_plots.update_plots(entries)
 
     def _on_logs_cleared(self):
         self.gyro_preview.clear_preview()
