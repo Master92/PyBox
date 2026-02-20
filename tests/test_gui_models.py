@@ -66,8 +66,9 @@ class TestLoadLogEntry:
         assert entry.color == LOG_COLORS[0]
         assert entry.duration_s > 0
         assert entry.visible is True
-        assert entry.time_start_s == 0.0
-        assert entry.time_end_s > 0.0
+        assert entry.time_start_s >= 0.0
+        assert entry.time_end_s > entry.time_start_s
+        assert entry.time_end_s <= entry.duration_s
 
     def test_gyro_arrays(self):
         _skip_if_missing(SAMPLE_BBL)

@@ -164,6 +164,53 @@ def _find_col(df: pd.DataFrame, candidates: list[str]) -> Optional[str]:
     return None
 
 
+def detect_active_range(
+    time_s: np.ndarray,
+    setpoints: list[np.ndarray],
+    threshold_frac: float = 0.15,
+    window_s: float = 0.5,
+    margin_s: float = 0.5,
+) -> tuple[float, float]:
+    """Detect the time range with meaningful stick input.
+
+    Computes a rolling RMS of the combined setpoint channels and returns
+    the first and last times the signal exceeds *threshold_frac* of the
+    peak RMS, with a small *margin_s* padding.
+
+    Falls back to full range if detection fails.
+    """
+    if len(time_s) < 100:
+        return float(time_s[0]), float(time_s[-1])
+
+    # Combined absolute setpoint magnitude
+    combined = np.zeros(len(time_s), dtype=np.float64)
+    for sp in setpoints:
+        combined += np.abs(sp)
+
+    # Rolling RMS (boxcar)
+    dt = np.median(np.diff(time_s))
+    if dt <= 0:
+        return float(time_s[0]), float(time_s[-1])
+    win = max(1, int(window_s / dt))
+    kernel = np.ones(win) / win
+    rms = np.sqrt(np.convolve(combined ** 2, kernel, mode="same"))
+
+    peak = np.max(rms)
+    if peak < 1.0:
+        return float(time_s[0]), float(time_s[-1])
+
+    threshold = threshold_frac * peak
+    active = rms >= threshold
+    indices = np.nonzero(active)[0]
+
+    if len(indices) == 0:
+        return float(time_s[0]), float(time_s[-1])
+
+    t_start = max(float(time_s[0]), float(time_s[indices[0]]) - margin_s)
+    t_end = min(float(time_s[-1]), float(time_s[indices[-1]]) + margin_s)
+    return t_start, t_end
+
+
 def load_log_entry(
     file_path: str,
     log_index: int,
@@ -195,4 +242,13 @@ def load_log_entry(
         time_start_s=0.0,
         time_end_s=decoded.duration_s,
     )
+
+    # Auto-detect a meaningful analysis range
+    time_s, _, _, _ = entry.gyro_arrays()
+    sp_r, sp_p, sp_y = entry.setpoint_arrays()
+    if len(time_s) > 0:
+        t0, t1 = detect_active_range(time_s, [sp_r, sp_p, sp_y])
+        entry.time_start_s = t0
+        entry.time_end_s = t1
+
     return entry
